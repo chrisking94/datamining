@@ -22,12 +22,17 @@ def readdata(filename):
 def readtable(filename):
     '''
     :param filename: file path
-    :return: pandas.DataFrame
+    :return: pandas.DataFrame,it's a table
     '''
     data = readdata(filename)
     return pd.DataFrame(data[1:-1],columns=data[0])
 
 def random_nodup(numlist):
+    '''
+    fetch a number in numlist randomly,then remove it from the list
+    :param numlist: list of numbers,you can generate it from range(...) etc.
+    :return: a number in the list
+    '''
     index = randint(0,numlist.__len__()-1)
     num = numlist[index]
     numlist.remove(num)

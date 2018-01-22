@@ -9,18 +9,16 @@ import MS_Apriori
 import NB
 import decisionTree
 import dmCrawler
-import machineleaninginaction
 from common import *
 import TreePlot
 import sequential_covering
 
-#Apriori.test()
+Apriori.test()
 #MS_Apriori.test()
 #CAR_Apriori.test()
 #GSP.test()
 #decisionTree.test()
-NB.test()
+#NB.test()
 #dmCrawler.test()
 #TreePlot.test()
-#machineleaninginaction.test()
 #sequential_covering.test()

@@ -5,27 +5,20 @@ from common import *
 from fractions import Fraction
 
 def test():
-    dataSet = [
-        ['牛肉', '鸡肉', '牛奶'],
-        ['牛肉', '奶酪'],
-        ['奶酪', '靴子'],
-        ['牛肉', '鸡肉', '奶酪'],
-        ['牛肉', '鸡肉', '衣服', '奶酪', '牛奶'],
-        ['鸡肉', '衣服', '牛奶'],
-        ['鸡肉', '牛奶', '衣服']
-    ]
-
+    dataSet = readdata('data/apriori.txt')
     result = Apriori(dataSet,0.3,0.8)
     print result.F
-    printList(result.F,'Apriori.F')
     Rules = result.genRules()  # dataSet,minsup,minconf
     print Rules
 
 class CItem(object):
-    name= ''
-    sup=Fraction(0,1)
-    supCount=0
     def __init__(self,name,supCount=0,sup=Fraction(0,1)):
+        '''
+        Basic data component for the whole apriori mining
+        :param name: item's name
+        :param supCount: support count,can be setted later
+        :param sup:calculated by function calcSup(D)
+        '''
         self.name = name
         self.sup = sup
         self.supCount = supCount
@@ -33,10 +26,20 @@ class CItem(object):
     def key(self):
         return self.name
 
-    def calcSup(self,T):#calculate item.count/n
+    def calcSup(self,T):
+        '''
+        calculate sup of this item
+        :param T:set of all examples
+        :return:sup
+        '''
         self.sup = Fraction(self.supCount , T.__len__())
 
     def namestr(self):
+        '''
+        just in case for that self.name is not a str,such as interger
+        so we convert it to str
+        :return:str(self.name)
+        '''
         return self.name.__str__()
 
     def __eq__(self, other):
@@ -45,10 +48,17 @@ class CItem(object):
     def __str__(self):
         return self.name.__str__()
 
-class CTransaction(list): #事务的项目按照MIS排序，如果MIS相同则按照事务名称的字典序排列
-    supCount,sup = 0,Fraction(0,1)
+class CTransaction(list):
     def __init__(self, item=CItem('')):
-        list.__init__([])
+        '''
+        Transaction is a sorted list of items
+        :param item:if item is given as CItem,or say item's name is not ''
+            then initialize self's info with item's info
+                if item is another Transaction,copy from it.
+        '''
+        list.__init__(self)
+        self.sup = 0
+        self.supCount = 0
         if(type(item) == CTransaction):
             self.sup = item.sup
             self.supCount = item.supCount
@@ -60,6 +70,11 @@ class CTransaction(list): #事务的项目按照MIS排序，如果MIS相同则�
                 self.append(item)
 
     def getSupCount(self,transanctionList):
+        '''
+        count self's support count in transanctionList
+        :param transanctionList:list of transactions
+        :return:support count of self
+        '''
         self.supCount = 0
         for t in transanctionList:
             if(self in t):
@@ -67,24 +82,42 @@ class CTransaction(list): #事务的项目按照MIS排序，如果MIS相同则�
         self.sup = self.calcSup(transanctionList)
         return self.supCount
 
-    def checkSupportDifferenceConstraint(self,fai):#支持度差别限制,return true if fit
-        ret = self[self.__len__()-1].sup - self[0] <= fai
-
-        return ret
-
     def calcSup(self,T):
+        '''
+        calculate support of self
+        :param T: examples set
+        :return: sup
+        '''
         self.sup = Fraction(self.supCount,T.__len__())
         return self.sup
 
     def sort(self, cmp = None, key=None, reverse=False):#sort by MIS,if several items have same MIS then sort them by name
+        '''
+        事务的项目按照MIS排序，如果MIS相同则按照事务名称的字典序排列
+        :param cmp:
+        :param key:
+        :param reverse:
+        :return:
+        '''
         list.sort(self,key=lambda x:x.name,reverse=reverse)
 
     def __getslice__(self, start, stop): #sub transaction
+        '''
+        convert the list[:] to CTransaction
+        :param start:
+        :param stop:
+        :return:
+        '''
         t = CTransaction()
         t.extend(list.__getslice__(self, start,stop))
         return t
 
     def __contains__(self, item):
+        '''
+        check whether there's a item in self by comparing item.name
+        :param item:
+        :return:
+        '''
         if(isinstance(item,list)):
             i = 0
             for itm in self:
@@ -97,6 +130,11 @@ class CTransaction(list): #事务的项目按照MIS排序，如果MIS相同则�
         return False
 
     def __sub__(self, other):
+        '''
+        remove items which are both in self and other
+        :param other:other CTransaction
+        :return:
+        '''
         t = CTransaction()
         i = 0
         for item in self:
@@ -109,7 +147,13 @@ class CTransaction(list): #事务的项目按照MIS排序，如果MIS相同则�
                 t.append(item)
         return t
 
-    def __add__(self, other):  # 没有检查重复项，返回新的结合事件,AUB
+    def __add__(self, other):
+        '''
+        没有检查重复项，返回新的结合事件,self U other
+        haven't check the duplicates
+        :param other:another Transaction
+        :return:
+        '''
         t = self[:]
         t.extend(other)
         t.sort()
@@ -126,7 +170,11 @@ class CTransaction(list): #事务的项目按照MIS排序，如果MIS相同则�
         s += s1.format(self.sup)
         return s
 
-    def __eq__(self, other):#if the name of each items in self and other is same,return True
+    def __eq__(self, other):
+        '''
+        :param other:another Transaction
+        :return:if the name of each item in self and other is same,return True
+        '''
         i = 0
         if(self.__len__() != other.__len__()):
             return False
@@ -137,22 +185,35 @@ class CTransaction(list): #事务的项目按照MIS排序，如果MIS相同则�
                 return False
         return True
 
-    def __supcount__(self):return self.supCount
-    def __sup__(self):return self.sup
-
 class CTransList(list):
-    name = ''
     def __init__(self,name):
-        list.__init__([CItem])
+        '''
+        List of Transactions
+        :param name:will be showed when print self
+        '''
+        list.__init__(self)
         self.name = name
 
-    def matchTransaction(self,transactionB):#match a same transaction and return it,to get sup etc.
+    def matchTransaction(self,transactionB):
+        '''
+        get same Transaction or say,a Transaction t in self
+        and t==transactionB.
+            ps:transactionB's info may aren't be initialized,such as sup etc.
+                but these infos of transaction in self have been counted.
+        :param transactionB:A Transaction want be matched.
+        :return:
+        '''
         for t in self:
             if(t == transactionB):
                 return t
         return None
 
     def __contains__(self, item):
+        '''
+        test whether an item is contained in self,compared by item.name
+        :param item:item need to be tested
+        :return:True or False
+        '''
         for t in self:
             if(t == item): #compare transaction
                 return True
@@ -167,8 +228,13 @@ class CTransList(list):
         return s
 
 class CFrequentSetList(list):
-    def __init__(self,name,setlist=()):
-        list.__init__(self,setlist)
+    def __init__(self,name):
+        '''
+        Frequent rule set list,contains F1,F2,F3,...
+        :param name:for print use
+        :param setlist:
+        '''
+        list.__init__(self,[CTransList('F0')])
         self.name = name
 
     def __str__(self):
@@ -180,6 +246,12 @@ class CFrequentSetList(list):
 
 class CRule(CTransaction):
     def __init__(self,transaction,pioneer,conf = 0.0):
+        '''
+        Rule:pioneer → (transaction - pioneer)
+        :param transaction:base transaction
+        :param pioneer:
+        :param conf:confidence of this rule
+        '''
         CTransaction.__init__(self,transaction)
         self.pioneer = pioneer
         self.conf = conf
@@ -213,7 +285,7 @@ class CRule(CTransaction):
 
 class Apriori:
     def __init__(self,T, minsup,minconf):
-        self.F = CFrequentSetList('Apriori.F',[CTransList('F0')])
+        self.F = CFrequentSetList('Apriori.F')
         self.T = CTransList('T')
         self.Rules = CTransList('Apriori.Rules')
         self.minsup = minsup
@@ -240,6 +312,10 @@ class Apriori:
             k += 1
 
     def init_pass(self,T):
+        '''
+        :param T:
+        :return: 1st Candidate Set
+        '''
         C1 = CTransList('C1')
         count = {}
         itemDict = {}
