@@ -8,6 +8,8 @@ def readdata(filename):
     '''
     :param filename: file path
     :return: numpy.ndarray of the data split by '\t' and '\n'
+        ps:the file should looks like a table,say it should have head and data
+            which are seperated by '\t'
     '''
     f = file(filename,'r')
     ret = []
@@ -18,6 +20,10 @@ def readdata(filename):
     return ret
 
 def readtable(filename):
+    '''
+    :param filename: file path
+    :return: pandas.DataFrame
+    '''
     data = readdata(filename)
     return pd.DataFrame(data[1:-1],columns=data[0])
 
