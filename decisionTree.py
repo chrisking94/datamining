@@ -8,37 +8,35 @@ import random as rd
 from fractions import Fraction
 
 def test():
-    data = readdata('data/loan_application.txt')
+    data = readdata('data/decisiontree.txt')
     clf = decisionTree(data[1:],data[0],gainthreshold=0.02,trainset=0.8)
-    testdata = ['young','false','false','good']
-    print clf.predict(testdata)
+    testdata = readdata('data/decisiontree_topred.txt')
+    for data in testdata:
+        print clf.predict(data)
     clf.show('loan_application')
     pass
 
 class TreeNode(TreePlot.TreePlotNode):
     def __init__(self,name):
+        '''
+        :param name:tree-node's infomation
+        '''
         TreePlot.TreePlotNode.__init__(self)
         self.name = name
         self.type = 'node'
         self.shape = 'rectangle'
         self.color = ('blue','yellow','green','purple')[rd.randint(0,3)]
-        self.edges = {}
 
     def content(self):
         return self.name
 
-    def appendchild(self,child,edgename=''):
-        edge = TreeEdge(self,child,edgename)
-        self.edges[edgename] = edge
-        if(self.firstchild == None):
-            self.firstchild = edge
-        else:
-            p = self.firstchild
-            while(p.nextsibling != None):
-                p = p.nextsibling
-            p.nextsibling = edge
-
     def search(self,data):#data should be dict like
+        '''
+        search data in tree recursively,and mark the path of this data in tree graph
+        with red(color)
+        :param data:1 data
+        :return:
+        '''
         self.color = 'red'
         if(self.type == 'leaf'):
             return self.name
@@ -49,18 +47,30 @@ class TreeNode(TreePlot.TreePlotNode):
         return nextnode.search(data)
 
 class TreeLeaf(TreeNode):
-    def __init__(self,name,percentage):
+    def __init__(self, name, probability):
+        '''
+        Leaf is derived from Node,so it is a Node in essence
+        but it will be drawed in different shape with node in the graph
+        :param name:leaf info
+        :param probability:this leaf's sup
+        '''
         TreeNode.__init__(self,name)
         self.name = name
         self.type = 'leaf'
         self.shape = 'ellipse'
-        self.percentage = percentage
+        self.percentage = probability
 
     def content(self):
         return self.name + '\n' + self.percentage.__str__()
 
 class TreeEdge(TreePlot.TreePlotEdge):
-    def __init__(self,startnode,endnode,name):
+    def __init__(self,name,startnode=None,endnode=None):
+        '''
+        Edge
+        :param startnode:
+        :param endnode:
+        :param name: string shown on edge
+        '''
         TreePlot.TreePlotEdge.__init__(self,startnode,endnode)
         self.color = ( 'blue', 'yellow', 'green', 'purple')[rd.randint(0, 3)]
         self.name = name
@@ -75,7 +85,7 @@ class decisionTree:
     gainthreshod :when gain of entropy reduction is less than it,stop expand tree
     trainset :get testset from D,test's size = D.size*(D.size-trainset)
     what's more:
-        you can expand tesetset by using decisionTree.test.append() or extend()
+        you can expand testset by using decisionTree.test.append() or .extend()
     '''
     def __init__(self,D,A,gainthreshold=0.001,trainset=1.0):
         self.A = A[0:A.__len__()-1]
@@ -103,25 +113,28 @@ class decisionTree:
         self._evaluate()
         pass
 
-    '''
-    #display tree in graph mode
-    name :title of graph,or to say name of the .pdf file
-    '''
     def show(self,name):
+        '''
+        display tree in graph mode
+        :param name: title of graph,or say name of the .pdf file
+        :return:None
+        '''
         showtree = self.tree
         if(self.infonode != None):
             showtree = self.infonode
         plt = TreePlot.TreePlot(showtree,name)
         plt.show()
 
-    '''
-    #predict an unknown data's label
-    data :numpy.array
-    '''
     def predict(self,data):
+        '''
+        predict an unknown data's label
+        :param data:1D(numpy.array)
+        :return:classlabel of data
+        '''
         data = dict(zip(self.A,data))
         return self.tree.search(data)
 
+    ####### private members #########
     def _evaluate(self):
         if(self.testset.__len__() == 0):
             return
@@ -145,7 +158,7 @@ class decisionTree:
             if(parentnode == None):
                 self.tree = leaf  # make T a leaf node labeled with class cj
             else:
-                parentnode.appendchild(leaf,edgename)
+                parentnode.appendchild(leaf,TreeEdge(edgename))
         elif A.__len__() == 0:  # else if A=∅ then
             # make T a leaf node labeled with cj,which is the most frequent class in D
             mostfreqclass, percent = self._mostfrequentclass(D)
@@ -153,7 +166,7 @@ class decisionTree:
             if(parentnode == None):
                 self.tree = leaf
             else:
-                parentnode.appendchild(leaf,edgename)
+                parentnode.appendchild(leaf,TreeEdge(edgename))
         else:  # D contains examples belonging to  a mixture of classes.We select a single
             # attribute to partition D into subsets so that each subset is purer
             p0 = self._impurityEval_1(D)
@@ -171,14 +184,14 @@ class decisionTree:
                     self.tree = leaf
                     parentnode = self.tree
                 else:
-                    parentnode.appendchild(leaf,edgename)
+                    parentnode.appendchild(leaf,TreeEdge(edgename))
             else:
                 leaf = TreeNode(Ag)
                 if(parentnode == None):
                     self.tree = leaf
                 else:
                     # make T a decision node on Ag
-                    parentnode.appendchild(leaf, edgename)
+                    parentnode.appendchild(leaf, TreeEdge(edgename))
                 Dl, Vl = self._partition(Ag, D)
                 j = 0
                 for Dj in Dl:

@@ -8,7 +8,7 @@ def test():
     thus there might be something wrong with it
     :return:
     '''
-    data = readdata('data/loan_application.txt')
+    data = readdata('data/decisiontree.txt')
     clf = sequential_covering_1(data[1:], data[0],20,0.02)
     print clf.RuleList
     pass
@@ -16,7 +16,7 @@ def test():
 class CRuleList(list):
     def __init__(self):
         '''
-            just for print usage
+            just for print use
             '''
         list.__init__(self)
 

@@ -2,26 +2,24 @@
 
 from MS_Apriori import CTransaction,CItem,CTransList
 from Apriori import CFrequentSetList
+from common import *
 
 def test():
-    SequenceDataBase = [
-        [[30],[90]],
-        [[10,20],[30],[10,40,60,70]],
-        [[30,50,70,80]],
-        [[30],[30,40,70,80],[90]],
-        [[90]]
-    ]
-    result = GSP(SequenceDataBase,0.25)
+    data = read3Ddata('data/gsp.txt')
+    result = GSP(data,0.25)
     print result.F
-    pass
 
 class CGSPElement(CTransaction):
-    name = 'GSP_Element'
-
-    def sort(self, cmp = None, key=None, reverse=False):
-        list.sort(self,key = lambda x:x.name)
+    def __init__(self,item = CItem('')):
+        CTransaction.__init__(self,item)
+        self.name = 'GSP_Element'
 
     def __getslice__(self, start, stop):
+        '''
+        :param start:
+        :param stop:
+        :return: CGSPElement object
+        '''
         element = CGSPElement()
         for itm in self:
             element.append(itm)
@@ -40,12 +38,22 @@ class CGSPElement(CTransaction):
 
 class CSequence(CTransaction):
     def __init__(self, GSPEle = CGSPElement()):
+        '''
+        if a none-empty element is provided,then init self by this element
+        :param GSPEle:
+        '''
         if(GSPEle.__len__()>0):
             CTransaction.__init__(self,GSPEle)
         else:
             CTransaction.__init__(self)
 
     def removeAt(self, index):
+        '''
+        remove an item from self,this function will modify self
+        :param index: index is the index of items,not elements,e.g.:
+            <{a,b},{c}>,if a.index=0 ,then c.index=2
+        :return:self after removing
+        '''
         i = 0
         for ele in self:
             for itm in ele:
@@ -58,6 +66,13 @@ class CSequence(CTransaction):
         return self
 
     def getItemSequence(self, start, stop): #counted by items
+        '''
+        get a sub-Sequence from self,index of this function is of same meaning with function
+        removeAt(self,index)
+        :param start: start item index
+        :param stop:stop item index,return sequence don't include this item
+        :return:CSequence object
+        '''
         i = 0
         sequence = CSequence()
         element = CGSPElement()
@@ -78,6 +93,11 @@ class CSequence(CTransaction):
         return sequence
 
     def getitem(self, item):
+        '''
+        the index's meaning of this function is same as remove(self,index)'s index
+        :param item: item's index
+        :return: CItem at index(param item)
+        '''
         i = 0
         for ele in self:
             for itm in ele:
@@ -88,18 +108,32 @@ class CSequence(CTransaction):
         return None
 
     def itemCount(self):
+        '''
+        :return: item's quantity of self
+        '''
         length = 0
         for ele in self:
             length += ele.__len__()
         return length
 
     def __getslice__(self, start, stop):
+        '''
+        :param start:
+        :param stop:
+        :return: CSequence object
+        '''
         s = CSequence()
         for ele in self:
             s.append(ele[:])
         return s
 
     def __contains__(self, item):
+        '''
+        see P31
+        if item is a sub-sequence of self then return True,else False
+        :param item: a nother sequence
+        :return: True or False
+        '''
         if(isinstance(self,list)):
             #item is a sequence
             i = 0
@@ -129,8 +163,13 @@ class CSeqList(CTransList):
 
 class GSP:
     def __init__(self,S,minsup):
-        self.S = CSeqList('S')  # [CGSPElement]
-        self.F = CFrequentSetList('GSP.F',[CSeqList('F0')])
+        '''
+        P33,2017.12.29
+        :param S:Sequences data set
+        :param minsup:minimum support
+        '''
+        self.S = CSeqList('S')
+        self.F = CFrequentSetList('GSP.F',CSeqList('F0'))
         C1 = self.init_pass(S)
         F1 = CSeqList('F1')
         for c in C1:

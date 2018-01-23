@@ -24,10 +24,12 @@ def test():
     DMCrawler(testURLs)
 
 class DMCrawler():
-    '''
-    this is a web page crawler who crawls the pages similiar with input page
-    '''
     def __init__(self, trainURLSet):
+        '''
+        this is a web page crawler who crawls the pages similiar with input page
+        :param trainURLSet:a list of URLs for training
+        相似网页爬虫，可以爬去与给定URL指向的网页相似的网页，使用多项式贝叶斯方法估计相似度
+        '''
         CCrawledPage.init()
         train_page_set = []
         for url in trainURLSet:
@@ -91,7 +93,7 @@ class CTF_IDF():
 
 class CCrawledPage(SGMLParser):
     StopWordsDict = {}
-    for word in file('hlt_stop_words.txt').read().split(u'\n'): #少了u' '就会出现编码，因为'\n'会是a part of a unicode char
+    for word in file('data/hlt_stop_words.txt').read().split(u'\n'): #少了u' '就会出现编码，因为'\n'会是a part of a unicode char
         StopWordsDict[word] = 1
     CrawledUrlDict = {}
     UrlPattern = re.compile(r'(http://[^/]+)', re.IGNORECASE)
@@ -154,7 +156,15 @@ class CCrawledPage(SGMLParser):
         return 1
 
     def crawl(self, deepth, crawledpagelist,classifier,minlikelihood=0):#DFS crawl
-        queue = []
+        '''
+        BFS crawl
+        :param deepth:quantity of qualified pages need to be crawled
+        :param crawledpagelist:a list to store the qualified pages
+        :param classifier:classifier to predict the similarity
+        :param minlikelihood:when a page's similarity > minlikelihood
+                                so it is a qualified page
+        :return:
+        '''
         #enqueue
         queue = self.urls
         while(deepth>0):

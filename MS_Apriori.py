@@ -4,60 +4,79 @@ from fractions import Fraction
 from Apriori import CItem,CTransaction,CTransList,CRule,CFrequentSetList
 
 def test():
-    testDS=[
-        ['牛肉','面包'],
-        ['面包','衣服'],
-        ['牛肉','面包','牛奶'],
-        ['奶酪','靴子'],
-        ['牛肉','面包','奶酪','鞋子'],
-        ['牛肉','面包','奶酪','牛奶'],
-        ['面包','牛奶','衣服']
-    ]
-    MS = {'牛奶':0.5,'面包':0.7,'牛肉':0.25,'衣服':0.25,'奶酪':0.25,'鞋子':0.25,'靴子':0.25}
-    result=MS_Apriori(testDS,MS,1,0.7)
+    data = readdata('data/ms_apriori.txt')
+    #first two lines of data are Item's name and Item's MIS
+    MISFloat = [float(x) for x in data[1]]
+    MS = dict(zip(data[0],MISFloat))
+    #the rest of data are Trasactions
+    testDS = data[2:]
+    result=MS_Apriori(testDS,MS,1,0.0)
     print result.genRules()
 
 class CMISItem(CItem):
-    MIS=0.0
     def __init__(self,name,MIS=0,supCount=0,sup=Fraction(0,1)):
+        '''
+        Item with minimum support
+        :param name:
+        :param MIS:
+        :param supCount:
+        :param sup:
+        '''
         CItem.__init__(self,name,supCount,sup)
         self.MIS = MIS
 
 class CMSATrans(CTransaction):
     def __init__(self,item = CMISItem('')):
+        '''
+        Transaction of MISItems
+        :param item:
+        '''
         CTransaction.__init__(self,item)
 
-    def sort(self, cmp = None, key=None, reverse=False):#sort by MIS,if several items have same MIS then sort them by name
+    def sort(self, cmp = None, key=None, reverse=False):
+        '''
+        sort by MIS,if several items have same MIS then sort them by name
+        :param cmp:
+        :param key:
+        :param reverse:
+        :return:
+        '''
         if(key == None):
             key = key=lambda x:str(x.MIS)+x.name
         list.sort(self,key=key,reverse=reverse)
 
-class CMSARule(CMSATrans):
-    pioneer = CMSATrans
-    conf = Fraction(0,1)
+class CMSARule(CRule):
     def __init__(self,transaction,pioneer,conf=0.0):
-        CMSATrans.__init__(self, CMISItem(''))
-        self.supCount = transaction.supCount
-        self.sup = transaction.sup
-        self.extend(transaction)
-        self.pioneer = pioneer
-        self.conf = Fraction(conf)
+        '''
+        it's similiar with CRule
+        :param transaction:
+        :param pioneer:
+        :param conf:
+        '''
+        CRule.__init__(self,transaction,pioneer,conf)
 
 
 class MS_Apriori():
     def __init__(self,T,MS,fai,minConf):
+        '''
+        MS Pariori P23 ,2018.01.23
+        :param T:Transactions numpy.ndarray
+        :param MS:Minimum support of each kind of item
+        :param fai:M={MIS(item1),MIS(item2),...}
+                    φ>max(M) - min(M)
+        :param minConf:min confidence of MISRule which is reserved
+        '''
         self.fai = fai
         self.minConf = minConf
-        self.F = CFrequentSetList('MS_Apriori.F', [CTransList('F0')])
+        self.F = CFrequentSetList('MS_Apriori.F')
         self.Rules = CTransList('MS_Apriori.Rules')
-        self.minConf = 0.0
+        self.T = CTransList('T')
         #convert MIS dict into MIS CItem dict
         dupMS = MS.copy()
         for key in dupMS.keys():
             dupMS[key] = CMISItem(key, dupMS[key])
         #data conversion
-        self.T = CTransList('T')
-        #fetch supCount
+        #count supCount
         for t in T:
             transaction = CMSATrans()
             for i in t:
@@ -69,9 +88,12 @@ class MS_Apriori():
         for item in dupMS.values():item.calcSup(T)
 
         #MS-Apriori
-        M = [] #[CItem]
-        M = [x[1] for x in sorted(dupMS.items(),key=lambda x:x[1].MIS)]
+        #M is a list of MISItem sorted by MIS
+        M = [x[1] for x in sorted(dupMS.items(),key=lambda x:x[1].MIS)]#[CItem]
         L=CTransList('L') #1-item transaction
+        #L is a 1-item Transactions list where:
+            #l is the first item who satisfies l.sup>=l.MIS
+            #L contains the items in M who satisfy item.sup>=l.MIS
         for i in range(M.__len__()):#L←init-pass(M,T)
             l = M[i]
             if(l.sup >= l.MIS):
@@ -88,21 +110,19 @@ class MS_Apriori():
 
         k = 2
         Fk_1 = F1
-        Fk = F1 #[Transaction]
-        Ck = CTransList('C'+str(k))
         while(Fk_1.__len__()>0):
             Fk = CTransList('F'+str(k))
             if(k == 2):
-                Ck = self.level2_candidate_gen(L,fai)
+                Ck = self._level2_candidate_gen(L, fai)
             else:
-                Ck = self.MScandidate_gen(Fk_1,k,fai)
+                Ck = self._MScandidate_gen(Fk_1, fai)
             for t in self.T:
                 for c in Ck:
                     if(c in t):
                         c.supCount += 1
                     if(c[1:c.__len__()] in t):
                         if(hasattr(c,'cec1sc')):
-                            setattr(c, 'cec1sc', getattr(c, 'cec1sc') + 1)  # cExceptC[1]SupCount
+                            setattr(c, 'cec1sc', getattr(c, 'cec1sc') + 1)  # (c without c[0])'s supCount
                         else:
                             setattr(c,'cec1sc',1)
             for c in Ck:
@@ -114,7 +134,13 @@ class MS_Apriori():
             k += 1
         #printList(self.F,'F Collections:')
 
-    def level2_candidate_gen(self,L,fai):
+    def _level2_candidate_gen(self, L, fai):
+        '''
+        generate C2 with L
+        :param L:
+        :param fai:
+        :return:C2
+        '''
         C2 = CTransList('C2')
         for i in range(L.__len__()-1):
             l = L[i]
@@ -125,7 +151,15 @@ class MS_Apriori():
                         C2.append(l+h)
         return C2
 
-    def MScandidate_gen(self,Fk_1,k,fai):
+    def _MScandidate_gen(self, Fk_1, fai):
+        '''
+        generate Fk with Fk-1
+        :param Fk_1:
+        :param k:
+        :param fai:
+        :return:Ck
+        '''
+        k = Fk_1.k + 1
         Ck = CTransList('C'+str(k))
         for i in range(Fk_1.__len__()):
             f1 = Fk_1[i]
@@ -144,6 +178,10 @@ class MS_Apriori():
         return Ck
 
     def genRules(self):
+        '''
+        generate rules
+        :return: self.Rules
+        '''
         k = 2
         for k in range(k, self.F.__len__()):
             for fk in self.F[k]:
@@ -160,10 +198,17 @@ class MS_Apriori():
                     if (conf >= self.minConf):
                         self.Rules.append(CMSARule(fk, X, conf))
                         H1.append(CMSATrans(item))
-                self.ap_genRules(fk, H1, 1)
+                self._ap_genRules(fk, H1)
         return self.Rules
 
-    def ap_genRules(self, fk, Hm, m):
+    def _ap_genRules(self, fk, Hm):
+        '''
+        :param fk:a frequent transaction in Fk
+        :param Hm: consequents of all m-item consequent rules derived from fk
+        :param m:
+        :return:None
+        '''
+        m = Hm.k
         k = fk.__len__()
         if (k > m + 1 and Hm.__len__() > 0):
             Hm1 = MS_Apriori.candidate_gen(Hm)  # Hm1 means Hm+1
@@ -175,10 +220,15 @@ class MS_Apriori():
                     self.Rules.append(CMSARule(fk, fk_hm1, conf))
                 else:
                     Hm1.remove(hm1)
-            self.ap_genRules(fk, Hm1, m + 1)
+            self._ap_genRules(fk, Hm1)
 
     @staticmethod
     def candidate_gen(Fk_1):
+        '''
+        generate Ck from Fk_1
+        :param Fk_1:
+        :return:Ck
+        '''
         i, j = 0, 0
         Ck =CTransList('None')
         k = 0

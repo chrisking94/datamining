@@ -9,15 +9,14 @@ import MS_Apriori
 import NB
 import decisionTree
 import dmCrawler
-from common import *
 import TreePlot
 import sequential_covering
 
-Apriori.test()
+#Apriori.test()
 #MS_Apriori.test()
 #CAR_Apriori.test()
 #GSP.test()
-#decisionTree.test()
+decisionTree.test()
 #NB.test()
 #dmCrawler.test()
 #TreePlot.test()

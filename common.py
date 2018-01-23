@@ -25,7 +25,29 @@ def readtable(filename):
     :return: pandas.DataFrame,it's a table
     '''
     data = readdata(filename)
-    return pd.DataFrame(data[1:-1],columns=data[0])
+    return pd.DataFrame(data[1:],columns=data[0])
+
+def read3Ddata(filename):
+    '''
+    read a 3D data from file,the file should be in the format like following:
+    1,2,3   2,3 4   ...
+    2,4 2   2,2
+    :       :
+    .       .
+    :param filename: file path
+    :return:
+    '''
+    f = file(filename, 'r')
+    ret = []
+    for line in open(filename):
+        line = f.readline().rstrip(u'\n')
+        blocks = line.split(u'\t')
+        retl = []
+        for block in blocks:
+            retl.append(block.split(','))
+        ret.append(retl)
+    ret = np.array(ret)
+    return ret
 
 def random_nodup(numlist):
     '''

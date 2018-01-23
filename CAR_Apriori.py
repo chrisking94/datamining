@@ -4,24 +4,18 @@ from MS_Apriori import CTransaction,CTransList,CMSARule,Fraction,MS_Apriori,CFre
 from Apriori import CItem
 
 def test():
-    docSet = [
-        (['学生','授课','学校'],       '教育'),
-        (['学生','学校'],              '教育'),
-        (['授课','学校','城市','游戏'], '教育'),
-        (['棒球','篮球'],              '体育'),
-        (['篮球','球员','观众'],       '体育'),
-        (['棒球','教练','游戏','球队'], '体育'),
-        (['篮球','球队','城市','游戏'], '体育')
-    ]
-    result = CAR_Apriori(docSet,0.2,0.6)
+    data = readdata('data/car_apriori.txt')
+    result = CAR_Apriori(data,0.2,0.6)
     print result.CAR
-    pass
 
 class CCARule(CTransaction):
-    conf = 0.0
-    class_ = ''
-    rulesupCount = 0
     def __init__(self,item=CItem(''),class_='',rulesupCount=0):
+        '''
+        if item is provided,init self with item's data
+        :param item:CItem object
+        :param class_:self's class label
+        :param rulesupCount:supcount of this rule
+        '''
         CTransaction.__init__(self,item)
         self.rulesupCount = rulesupCount
         self.class_ = class_
@@ -34,20 +28,26 @@ class CCARule(CTransaction):
         self.sup = Fraction(self.rulesupCount,T.__len__())
         return self.sup
 
-    def sort(self, cmp = None, key=None, reverse=False):
-        if(key == None):
-            key = lambda x:x.name
-        list.sort(self,key = key,reverse=reverse)
-
     def __getslice__(self, start, stop):
+        '''
+        :param start:
+        :param stop:
+        :return: CCARule object
+        '''
         r = CCARule()
         r.extend(CTransaction.__getslice__(self,start,stop))
         return r
 
-    def __add__(self, other):#没排序
+    def __add__(self, other):
+        '''
+        return a new CCARule n,n=self+other
+        :param other:another Rule
+        :return:
+        '''
         r = CCARule()
         r.extend(self)
         r.extend(other)
+        r.sort()
         return r
 
     def __str__(self):
@@ -68,8 +68,14 @@ class CCARList(CTransList):
 
 class CAR_Apriori():
     def __init__(self,T,minsup,minconf):
+        '''
+        CAR_Apriori P29,2018.12.23
+        :param T:dataset(numpy.ndarray),see car_apriori.txt
+        :param minsup:minimum support
+        :param minconf:minimum confidence
+        '''
         self.T = CCARList('T')
-        self.CAR = CFrequentSetList('CAR_Apriori.CAR', [CCARList('CCAR0')])  # [CCARList]
+        self.CAR = CFrequentSetList('CAR_Apriori.CAR', CCARList('CCAR0'))  # [CCARList]
         #covert dataSet,convert T to self.T
         C1 = self.init_pass(T)
         F1 = CCARList('F1')
@@ -132,27 +138,27 @@ class CAR_Apriori():
         car = CCARule()
         ci = CItem('')
         for rule in T:
-            TRule = CCARule()
-            TRule.class_ = rule[1]
-            for item in rule[0]:
-                name_class = item + rule[1]
+            trule = CCARule()
+            trule.class_ = rule[-1]
+            for item in rule[0:-1]:
+                name_class = item + trule.class_
                 if (itemDict.has_key(item)):
                     ci = itemDict[item]
                     ci.supCount += 1
                 else:
                     ci = CItem(item,1)
                     itemDict[item] = ci
-                TRule.append(ci)
+                trule.append(ci)
                 #gen 1-  rule
                 if(ruleDict.has_key(name_class)):
                     car = ruleDict[name_class]
                     car.rulesupCount += 1
                     car.supCount = ci.supCount #condsupCount
                 else:
-                    car = CCARule(ci,rule[1],1)
+                    car = CCARule(ci,trule.class_,1)
                     ruleDict[name_class] = car
                     C1.append(car)
-            TRule.sort()
-            self.T.append(TRule)
+            trule.sort()
+            self.T.append(trule)
         return  C1
 

@@ -99,7 +99,7 @@ class CTransaction(list):
         :param reverse:
         :return:
         '''
-        list.sort(self,key=lambda x:x.name,reverse=reverse)
+        list.sort(self,key=lambda x:x.name,reverse=False)
 
     def __getslice__(self, start, stop): #sub transaction
         '''
@@ -193,6 +193,7 @@ class CTransList(list):
         '''
         list.__init__(self)
         self.name = name
+        self.k = 0
 
     def matchTransaction(self,transactionB):
         '''
@@ -227,14 +228,18 @@ class CTransList(list):
         s+= '~~~~~~~~~~~~~~~~~~~~~~~'
         return s
 
+    def append(self, object):
+        self.k = object.__len__()
+        list.append(self,object)
+
 class CFrequentSetList(list):
-    def __init__(self,name):
+    def __init__(self,name,frequentset0 = CTransList('F0')):
         '''
         Frequent rule set list,contains F1,F2,F3,...
         :param name:for print use
         :param setlist:
         '''
-        list.__init__(self,[CTransList('F0')])
+        list.__init__(self,[frequentset0])
         self.name = name
 
     def __str__(self):
