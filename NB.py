@@ -7,225 +7,80 @@ def test():
     trainsetselection = 1
     if trainsetselection == 1:
         clf = NB(readtable('data/naivebayes_trainset.txt'))
+        clf.train()
         topred = readdata('data/naivebayes_topred.txt')
     else:
-        clf = NB(readtable('data/decisiontree.txt'))
-        topred = readdata('data/decisiontree_topred.txt')
+        clf = NB(readtable('data/decjsiontree.txt'))
+        clf.train()
+        topred = readdata('data/decjsiontree_topred.txt')
     #print clf.classdict
     print clf.predict(topred)
 
-class CNBValue():
-    def __init__(self,value):
-        '''
-        a value e.g.:young,False,excellent,...
-        :param value:
-        '''
-        self.value = value
-        self.count = 0
-        self.sup = Fraction(0,1)
-
-    def calcSup(self, classsupcount, lambda_):
-        '''
-        :param classsupcount:
-        :param lambda_: lambda
-        :return:
-        '''
-        self.sup = Fraction(self.count + lambda_, classsupcount + lambda_)
-        return self.sup
-
-class CNBAttribute(dict):
-    def __init__(self,attrname):
-        '''
-        An NBAttribute has many values,self is a dict{value:NBValue} in essence
-        :param attrname:
-        '''
-        dict.__init__(self)
-        self.name = attrname
-
-    def checkValue(self,value):
-        '''
-        if self has this value
-        then self[value].count+=1,self[value] is an object of NBValue
-        else add self[value]=CNBValue(value),who's count=1
-        :param value:
-        :return:NBValue who's value == value
-        '''
-        if(dict.has_key(self,value)):
-            nbv = dict.__getitem__(self,value)
-            nbv.count += 1
-        else:
-            nbv = CNBValue(value)
-            nbv.count = 1
-            dict.__setitem__(self,value,nbv)
-        return nbv
-
-    def calcSup(self, classsupcount, lambda_):
-        '''
-        :param classsupcount: class.count counted in dataset
-        :param lambda_:
-        :return:
-        '''
-        self.classsupcount = classsupcount
-        self.lambda_ = lambda_
-        for nbv in self.values():
-            nbv.calcSup(classsupcount, lambda_)
-
-    def __getitem__(self, item):
-        '''
-        create value if not exists
-        :param item: value
-        :return:NBValue object who's value == item
-        '''
-        if(dict.has_key(self,item)):
-            nbv = dict.__getitem__(self,item)
-        else:
-            nbv = CNBValue(item)
-            nbv.calcSup(self.classsupcount,self.lambda_)
-            dict.__setitem__(self,item,nbv)
-        return nbv
-
-class CNBClass(list):
-    def __init__(self, classname, attributenamelist):
-        '''
-        a NBClass has several NBAttributes
-        :param classname:
-        :param attributenamelist:NBAttributes' name
-        '''
-        list.__init__(self)
-        self.label = classname
-        self.classid = attributenamelist[-1]
-        self.count = 0
-        self.sup = Fraction(0,1)
-        for name in attributenamelist[0:attributenamelist.__len__()-1]:
-            self.append(CNBAttribute(name))
-
-    def calcSup(self, examplecount, lambda_):
-        '''
-        calculate self's sup and sup of all values
-        :param examplecount: quantity of examples in dataset
-        :param lambda_:
-        :return: self.sup
-        '''
-        self.sup = Fraction(self.count, examplecount)
-        for nba in self:
-            nba.calcSup(self.count, lambda_)
-        return self.sup
-
-    def __str__(self):
-        s = '------class {}------\n'.format(self.label)
-        s += '-Pr({}={})={}\n'.format(self.classid,self.label,self.sup)
-        for nba in self:
-            for nbv in nba.values():
-                s += '--Pr({}={}|{}={})={}\n'.format(nba.name,nbv.value,self.classid,self.label,nbv.sup)
-        s += '--END-class {}-END--'.format(self.label)
-        return s
-
-
-class CNBClassDict(dict):
-    def __init__(self, attributenamelist):
-        '''
-        NBClassDict is a dict{classname:NBClass}
-        :param attributenamelist:
-        '''
-        dict.__init__(self)
-        self.rulecount = 0
-        self.attributenamelist = attributenamelist
-
-    def checkClass(self,classname):
-        '''
-        create if not exists
-        :param classname:
-        :return: a CNBClass whos name's classname
-        '''
-        if(dict.has_key(self,classname)):
-            nbc = dict.__getitem__(self,classname)
-            nbc.count += 1
-        else:
-            nbc = CNBClass(classname,self.attributenamelist)
-            nbc.count = 1
-            dict.__setitem__(self,classname,nbc)
-        self.rulecount += 1
-        return nbc
-
-    def calcSup(self):
-        '''
-        calculate sup of all classes in self
-        :return:
-        '''
-        lambda_ = Fraction(1 , self.rulecount)
-        for nbc in self.values():
-            nbc.calcSup(self.rulecount,lambda_)
-
-    def __str__(self):
-        s = '::::::NBRuleDict::::::\n'
-        for nbc in self.values():
-            s += nbc.__str__() +'\n'
-        s += '::END:NBRuleDict:END::'
-        return s
-
-class CNBRule(list):
-    def __init__(self,defaultlabel=''):
-        '''
-        can be used to check whether prediction is right or wrong
-        :param defaultlabel:
-        '''
-        self.classlabel = ''
-        self.sup = Fraction(0,1)
-        self.labellist = []  #the member not declared in init will be treated as static member
-        self.defaultlabel = defaultlabel
-        list.__init__(self)
-
-    def __str__(self):
-        s = ''
-        if(self.classlabel == self.defaultlabel):
-            s += 'V(Right)--\t'
-        else:
-            s += 'X(Wrong)--\t'
-        for value in self:
-            s += value.__str__() + '\t\t'
-        s += 'Class={} Pr={}'.format(self.classlabel,self.sup)
-        #s +=' ---other '
-        #for t in self.labellist:
-        #    s += 'P({})={}\t'.format(t[0],t[1])
-        return s
-
-    def checkLabel(self, label, probability):
-        '''
-        when sup is greater than the sup of self's classlabel
-        then set current classlabel to (param label),and update self's sup
-        :param label:a string represents self's class
-        :param probability:label's probability calculated by NaiveBayes method
-        :return:None
-        '''
-        newlabel = (label, probability)
-        self.labellist.append(newlabel)
-        if(probability > self.sup):
-            self.sup = probability
-            self.classlabel = label
-
-class CNBRuleList(list):
-    def __str__(self):
-        s = ''
-        for nbr in self:
-            s += nbr.__str__() + '\n'
-        return s
-
 class NB():
-    def __init__(self,trainingset):
+    def __init__(self,trainset):
         '''
-        classifier with NaiveBayes algorithm
-        :param trainingset:table(pandas.DataFrame)
+            classifier with NaiveBayes algorithm
+            :param trainingset:table(pandas.DataFrame)
         '''
-        attributenamelist = list(trainingset.columns)
-        self.classdict = CNBClassDict(attributenamelist)
-        for rule in trainingset.itertuples():
-            classlabel = rule[-1]
-            nbc = self.classdict.checkClass(classlabel)
-            i = 0
-            for value in rule[1:rule.__len__()-1]:
-                nbc[i].checkValue(value)
-                i += 1
-        self.classdict.calcSup()
+        self.trainset = trainset
+        self.classdict = None
+        self.nvecdim = -1
+
+    def train(self,trainset=None):
+        if(trainset is None):
+            trainset = self.trainset
+            if(trainset is None):
+                raise Exception('error:there\'s no trainset!')
+        wordindexer = {}#word index-er
+        classdict = {}
+        wordindex = 0
+        i = 0
+        for doc in trainset.itertuples(index=False):
+            cla = doc[-1] #class label
+            if(not classdict.has_key(cla)):#classify doc into the class its belongs to
+                classdict[cla] = []
+            doc=doc[:doc.__len__()-1]
+            vector = [0] * (wordindex)
+            for word in doc:
+                if(not wordindexer.has_key(word)):
+                    wordindexer[word] = wordindex
+                    i = wordindex
+                    wordindex += 1
+                    vector.append(0)
+                else:
+                    i = wordindexer[word]
+                vector[i] += 1
+            classdict[cla].append(vector) #append doc vector to trainset
+        self.wordindexer = wordindexer
+        i = wordindex
+        self.nvecdim = i
+        for class_docs in classdict.iteritems():
+            cla = class_docs[0]
+            docs = class_docs[1]
+            vec_wordscount = np.zeros(i)
+            for doc in docs:
+                # reshape vectors to the same dim
+                doc.extend([0] * (i - doc.__len__()))
+                vector = np.array(doc)
+                vec_wordscount += vector
+            vecP_w_cj = vec_wordscount / float(docs.__len__())
+            P_cj = docs.__len__() / float(trainset.__len__())
+            classdict[cla] = (vecP_w_cj,P_cj)
+        self.classdict = classdict
+
+    def _docToVec(self,doc):
+        '''
+        convert document to vector
+        :param doc:word list
+        :return:vector converted from doc
+        '''
+        vecRet = np.zeros(self.nvecdim)
+        for word in doc[:doc.__len__()]:
+            if(self.wordindexer.has_key(word)):
+                vecRet[self.wordindexer[word]] += 1
+            else:
+                print 'warning:[%s] never appears in training set,ignored!' % (word)
+        return vecRet
 
     def predict(self,data):
         '''
@@ -233,21 +88,33 @@ class NB():
         :param data: 1 data or a list of data
         :return:a rule with classlabel or a list of such rules
         '''
+        if(self.classdict == None):
+            raise Exception('Please train NB firstly!')
         if(isinstance(data[0],np.ndarray)):
-            result = CNBRuleList()
+            result = []
             for rule in data:
                 result.append(self.predict(rule))
             return result
         else:
-            defaultlabel = data[-1]
-            result = CNBRule(defaultlabel)
-            result.extend(data[0:data.__len__()-1])
-            for nbc in self.classdict.values():
-                sup = nbc.sup
-                i = 0
-                for value in data[0]:
-                    sup *= nbc[i][value].sup
-                    i += 1
-                result.checkLabel(nbc.label,sup)
-            return result
+            maxProb = 0
+            mostProbClass = None
+            vecData = self._docToVec(data)
+            for class_probtuple in self.classdict.iteritems():
+                cla = class_probtuple[0]
+                vecPwcj = class_probtuple[1][0]
+                Pcj = class_probtuple[1][1]
+                vecP = vecData * vecPwcj
+                P_cj_d = Pcj
+                for p in vecP:
+                    if(p != 0):
+                        P_cj_d *= p
+                if(P_cj_d > maxProb):
+                    maxProb = P_cj_d
+                    mostProbClass = cla
+            return mostProbClass,maxProb
 
+    def _crossValidation(self,testset=0.2,times=10):
+        train = range(self.trainset.__len__())
+        test = []
+        testsize = self.trainset.__len__() * testset
+        np.random

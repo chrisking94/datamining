@@ -9,7 +9,12 @@ def readdata(filename):
     :param filename: file path
     :return: numpy.ndarray of the data split by '\t' and '\n'
         ps:the file should looks like a table,say it should have head and data
-            which are seperated by '\t'
+            which are seperated by '\t',see following:
+            A   B #head
+            t   y #data
+            .   .
+            .   .
+            .   .
     '''
     f = file(filename,'r')
     ret = []
